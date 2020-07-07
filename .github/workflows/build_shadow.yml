@@ -108,6 +108,9 @@ jobs:
           dnf install -y https://dl.fedoraproject.org/pub/archive/epel/7.7/x86_64/Packages/i/igraph-devel-0.7.1-12.el7.x86_64.rpm
           dnf install -y $CC_PACKAGE $CXX_PACKAGE cmake make glib2 glib2-devel python3 xz xz-devel yum-utils curl findutils
 
+      - name: Install python dependencies
+        run: pip3 install PyYAML
+
       - name: Install Rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain ${{ matrix.rust }}
