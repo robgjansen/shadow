@@ -226,6 +226,7 @@ NOREMAP(int, futimesat, (int a, const char* b, const struct timeval c[2]), a, b,
 NOREMAP(ssize_t, getdents, (int a, void* b, size_t c), a, b, c);
 NOREMAP(ssize_t, getdents64, (int a, void* b, size_t c), a, b, c);
 NOREMAP(int, getpeername, (int a, struct sockaddr* b, socklen_t* c), a, b, c);
+NOREMAP(ssize_t, getrandom, (void* a, size_t b, unsigned int c), a, b, c);
 NOREMAP(int, getsockname, (int a, struct sockaddr* b, socklen_t* c), a, b, c);
 static REMAP(int, ioctl_explicit, ioctl, (int a, unsigned long b, char* c), a,b,c);
 NOREMAP(int, linkat, (int a, const char* b, int c, const char* d, int e), a, b, c, d, e);

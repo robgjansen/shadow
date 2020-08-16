@@ -26,6 +26,7 @@
 #include "main/host/syscall/ioctl.h"
 #include "main/host/syscall/mman.h"
 #include "main/host/syscall/protected.h"
+#include "main/host/syscall/random.h"
 #include "main/host/syscall/socket.h"
 #include "main/host/syscall/time.h"
 #include "main/host/syscall/timerfd.h"
@@ -215,6 +216,7 @@ SysCallReturn syscallhandler_make_syscall(SysCallHandler* sys,
         HANDLE(getdents64);
         HANDLE(getpeername);
         HANDLE(getpid);
+        HANDLE(getrandom);
         HANDLE(getsockname);
         HANDLE(getsockopt);
         HANDLE(gettimeofday);
@@ -277,7 +279,6 @@ SysCallReturn syscallhandler_make_syscall(SysCallHandler* sys,
         NATIVE(eventfd2);
         NATIVE(execve);
         NATIVE(futex);
-        NATIVE(getrandom);
 #ifdef SYS_mmap2
         NATIVE(mmap2);
 #endif
