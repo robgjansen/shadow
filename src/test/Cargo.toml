@@ -124,4 +124,4 @@ path = "regression/test_signal_resched.rs"
 [dependencies]
 libc = "0.2"
 nix = "0.22.1"
-rand = { version="0.8.0", features=["small_rng"] }
+rand = { version="0.8.5", features=["small_rng"] }
