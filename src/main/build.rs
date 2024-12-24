@@ -140,7 +140,6 @@ fn run_bindgen(build_common: &ShadowBuildCommon) {
         .header("core/affinity.h")
         .header("core/definitions.h")
         .header("core/worker.h")
-        .header("host/descriptor/compat_socket.h")
         .header("host/descriptor/descriptor.h")
         .header("host/descriptor/epoll.h")
         .header("host/descriptor/regular_file.h")
@@ -196,7 +195,6 @@ fn run_bindgen(build_common: &ShadowBuildCommon) {
         .allowlist_function("scanRpathForLib")
         .allowlist_function("runConfigHandlers")
         .allowlist_function("rustlogger_new")
-        .allowlist_function("compatsocket_.*")
         .allowlist_function("workerpool_updateMinHostRunahead")
         .allowlist_function("process_.*")
         .allowlist_function("shadow_logger_getDefault")
@@ -341,7 +339,6 @@ fn build_shadow_c(build_common: &ShadowBuildCommon) {
         "core/affinity.c",
         "host/descriptor/descriptor.c",
         "host/status_listener.c",
-        "host/descriptor/compat_socket.c",
         "host/descriptor/epoll.c",
         "host/descriptor/regular_file.c",
         "host/descriptor/socket.c",
