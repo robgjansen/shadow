@@ -262,16 +262,11 @@ impl Host {
         let inet_tx_rate = RateLimit::BytesPerSecond(params.requested_bw_up_bits / 8);
         let inet_rx_rate = RateLimit::BytesPerSecond(params.requested_bw_down_bits / 8);
 
-        // Note: our rate limit configs below are meant to match the previous
-        // router/relay design where we popped packets from the netif according
-        // to the upstream rate limit, and we popped packets from the CoDel
-        // queue according to the downstream rate limit. For now, we mimic that
-        // same behavior within the new router design, but a future commit will
-        // change this behavior to model device rates separate from
-        // up/downstream rates.
-        let mut router = Router::new(RateLimit::Unlimited, inet_rx_rate);
+        // Create a router to help route packets and model our global upstream
+        // and downstream rate limits.
+        let mut router = Router::new(inet_tx_rate, inet_rx_rate);
 
-        // Now install routes and rate limits for our packet devices.
+        // Now install routes and rate limits for our network interfaces.
         // TODO: add new shadow config options if we want to allow users to
         // restrict the rate of these device independent of the global
         // upstream and downstream rates we configure in Router::new().
@@ -285,7 +280,7 @@ impl Host {
         // The default network-facing interface.
         router.attach_device(
             net_ns.internet.borrow().get_address(),
-            inet_tx_rate, // See note above
+            RateLimit::Unlimited,
             RateLimit::Unlimited,
         );
 
