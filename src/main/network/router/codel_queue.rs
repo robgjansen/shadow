@@ -40,9 +40,9 @@ pub struct CoDelConfig {
     /// corresponding to the "INTERVAL" parameter in the RFC. This is recommended to
     /// be set to 100 milliseconds in internet routers.
     pub interval: SimulationTime,
-    /// The maximum number of packets we will store, corresponding to the "limit"
-    /// parameter in the codel man page. This is recommended to be 1000 in internet
-    /// routers.
+    /// The maximum number of bytes we will store, corresponding to the "limit"
+    /// parameter in the codel man page. This is recommended to be 1000*mtu in
+    /// internet routers.
     pub limit: usize,
 }
 
@@ -323,7 +323,8 @@ impl CoDelQueue {
     /// Requires the current time as an argument to avoid calling into the
     /// worker module internally.
     pub fn push(&mut self, packet: PacketRc, now: EmulatedTime) {
-        if self.elements.len() < self.config.limit {
+        // Implement a bytes-based rather than packet-based limits.
+        if self.total_bytes_stored < self.config.limit {
             packet.add_status(PacketStatus::RouterEnqueued);
             self.total_bytes_stored += packet.len();
             self.elements.push_back(CoDelElement {
