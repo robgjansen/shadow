@@ -18,9 +18,8 @@ use shadow_shim_helper_rs::{emulated_time::EmulatedTime, simulation_time::Simula
 use crate::cshadow;
 use crate::network::packet::{PacketRc, PacketStatus};
 
-/// Shadow's default target value is 10 milliseconds, an increase over the
-/// recommended value of 5 milliseconds for internet routers.
-const DEFAULT_TARGET: SimulationTime = SimulationTime::from_duration(Duration::from_millis(10));
+/// The recommended value is 5 milliseconds for internet routers.
+const DEFAULT_TARGET: SimulationTime = SimulationTime::from_duration(Duration::from_millis(5));
 
 /// The recommended value is 100 milliseconds for internet routers.
 const DEFAULT_INTERVAL: SimulationTime = SimulationTime::from_duration(Duration::from_millis(100));
