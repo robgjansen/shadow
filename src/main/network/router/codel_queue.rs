@@ -6,7 +6,8 @@
 //!
 //!  More info:
 //!   - <https://en.wikipedia.org/wiki/CoDel>
-//!   - <http://man7.org/linux/man-pages/man8/tc-codel.8.html>
+//!   - <https://man7.org/linux/man-pages/man8/tc-codel.8.html>
+//!   - <https://man7.org/linux/man-pages/man8/tc-cake.8.html>
 //!   - <https://queue.acm.org/detail.cfm?id=2209336>
 //!   - <https://queue.acm.org/appendices/codel.html>
 
@@ -14,20 +15,32 @@ use std::{collections::VecDeque, time::Duration};
 
 use shadow_shim_helper_rs::{emulated_time::EmulatedTime, simulation_time::SimulationTime};
 
-use crate::cshadow as c;
+use crate::cshadow;
 use crate::network::packet::{PacketRc, PacketStatus};
 
 /// Shadow's default target value is 10 milliseconds, an increase over the
 /// recommended value of 5 milliseconds for internet routers.
 const DEFAULT_TARGET: SimulationTime = SimulationTime::from_duration(Duration::from_millis(10));
 
-/// Shadow uses a default of 100 milliseconds, which is the same value
-/// recommended for internet routers.
+/// The recommended value is 100 milliseconds for internet routers.
 const DEFAULT_INTERVAL: SimulationTime = SimulationTime::from_duration(Duration::from_millis(100));
 
-/// Even though the recommended value is 1000 for internet routers, Shadow's
-/// default is no limit due to our batched sending.
+/// The recommended value is 1000 packets for internet routers, which would
+/// be multiplied by MTU for our bytes-based limit.
+///   `1_000usize.saturating_mul(MTU_BYTES as usize);`
+/// However, due to Shadow's batched sending behavior, we don't currently impose
+/// a limit.
 const DEFAULT_LIMIT: usize = usize::MAX;
+
+/// The recommended minimum limit is 16 KiB, but we don't impose a limit.
+const MIN_LIMIT: usize = usize::MAX;
+
+/// The recommended maximum limit is 64 MiB, but we don't impose a limit.
+const MAX_LIMIT: usize = usize::MAX;
+
+/// The MTU for shadow packets.
+// TODO: this inaccurate for UDP because shadow does not fragment UDP packets.
+const MTU_BYTES: u64 = cshadow::CONFIG_MTU as u64;
 
 // Collects the configuration values needed for running a codel queue.
 #[derive(Debug)]
@@ -52,6 +65,41 @@ impl Default for CoDelConfig {
             target: DEFAULT_TARGET,
             interval: DEFAULT_INTERVAL,
             limit: DEFAULT_LIMIT,
+        }
+    }
+}
+
+impl CoDelConfig {
+    /// Calculates CoDel `target`, `interval`, and `limit` parameters from link rate.
+    pub fn from_rate(bytes_per_second: u64) -> Self {
+        // Guard against rate=0;
+        let rate = bytes_per_second.max(1);
+
+        // Serialization time for a single full-sized mtu frame
+        let mtu_serialization = SimulationTime::from_secs(1)
+            .saturating_mul(MTU_BYTES)
+            .checked_div(rate)
+            .unwrap_or(SimulationTime::from_nanos(1));
+
+        // Prevent false standing-queue detection when 1.5x MTU serialization > 5 ms.
+        let min_target = mtu_serialization
+            .saturating_mul(3)
+            .checked_div(2)
+            .unwrap_or(SimulationTime::from_nanos(1));
+        let target = DEFAULT_TARGET.max(min_target);
+
+        // Keep interval at least 20x target so the control loop spans a full RTT window.
+        let interval = DEFAULT_INTERVAL.max(target.saturating_mul(20));
+
+        // The bandwidth-delay product is (rate * interval);
+        let bdp_bytes = rate.saturating_mul(interval.as_secs());
+        // Set limit to the BDP, clamped by our min and max limits.
+        let limit = (bdp_bytes as usize).clamp(MIN_LIMIT, MAX_LIMIT);
+
+        CoDelConfig {
+            target,
+            interval,
+            limit,
         }
     }
 }
@@ -254,7 +302,7 @@ impl CoDelQueue {
         standing_delay: SimulationTime,
     ) -> bool {
         if standing_delay < self.config.target
-            || self.total_bytes_stored <= c::CONFIG_MTU.try_into().unwrap()
+            || self.total_bytes_stored <= MTU_BYTES.try_into().unwrap()
         {
             // We are in a good state, i.e., below the target delay. We reset
             // the interval expiration, so that we wait for at least one full
@@ -422,7 +470,7 @@ mod tests {
         for _ in 0..5 {
             cdq.push(PacketRc::new_ipv4_udp_mock(), start);
         }
-        assert!(cdq.total_bytes_stored > c::CONFIG_MTU.try_into().unwrap());
+        assert!(cdq.total_bytes_stored > MTU_BYTES.try_into().unwrap());
 
         // Standing delays must remain above the TARGET for INTERVAL amount of
         // time in order to enter the drop state.
@@ -477,7 +525,7 @@ mod tests {
         for _ in 0..N {
             cdq.push(PacketRc::new_ipv4_udp_mock(), start);
         }
-        assert!(cdq.total_bytes_stored > c::CONFIG_MTU.try_into().unwrap());
+        assert!(cdq.total_bytes_stored > MTU_BYTES.try_into().unwrap());
         assert_eq!(cdq.len(), N);
         assert_eq!(cdq.mode, CoDelMode::Store);
 
