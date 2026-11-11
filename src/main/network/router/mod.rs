@@ -126,7 +126,7 @@ use crate::network::packet::PacketRc;
 use crate::network::{PacketDevice, RateLimit};
 use crate::utility::ObjectCounter;
 
-use self::codel_queue::CoDelQueue;
+use self::codel_queue::{CoDelConfig, CoDelQueue};
 use self::task::{TaskKind, TaskQueue};
 use self::token_bucket::TokenBucket;
 
@@ -633,9 +633,19 @@ impl RateLimitedQueue {
     /// Creates a new packet queue that can be popped according the the given
     /// rate limit.
     fn new(limit: RateLimit) -> Self {
+        let limiter = match limit {
+            RateLimit::BytesPerSecond(bytes) => Some(create_token_bucket(bytes)),
+            RateLimit::Unlimited => None,
+        };
+
+        let codel_config = match limit {
+            RateLimit::BytesPerSecond(bytes) => CoDelConfig::from_rate(bytes),
+            RateLimit::Unlimited => CoDelConfig::from_rate(u64::MAX),
+        };
+
         Self {
-            packets: CoDelQueue::default(),
-            limiter: limit.into(),
+            packets: CoDelQueue::new(codel_config),
+            limiter,
             blocked_until: None,
             irq: false,
         }
@@ -693,15 +703,6 @@ impl RateLimitedQueue {
     /// rate limit block).
     fn ready_at<T>(&self, ctx: &Context<T>) -> EmulatedTime {
         self.blocked_until.unwrap_or(ctx.now)
-    }
-}
-
-impl From<RateLimit> for Option<TokenBucket> {
-    fn from(limit: RateLimit) -> Self {
-        match limit {
-            RateLimit::BytesPerSecond(bytes) => Some(create_token_bucket(bytes)),
-            RateLimit::Unlimited => None,
-        }
     }
 }
 

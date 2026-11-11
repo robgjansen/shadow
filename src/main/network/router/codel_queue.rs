@@ -156,14 +156,19 @@ pub struct CoDelQueue {
     previous_drop_count: usize,
 }
 
-impl CoDelQueue {
-    /// Creates a new empty packet queue.
-    #[allow(unused)]
-    pub fn new(config: CoDelConfig) -> CoDelQueue {
+impl From<CoDelConfig> for CoDelQueue {
+    fn from(config: CoDelConfig) -> Self {
         CoDelQueue {
             config,
             ..Default::default() // Fill remaining with default values.
         }
+    }
+}
+
+impl CoDelQueue {
+    /// Creates a new empty packet queue.
+    pub fn new(config: CoDelConfig) -> CoDelQueue {
+        CoDelQueue::from(config)
     }
 
     /// Returns the total number of packets stored in the queue.
